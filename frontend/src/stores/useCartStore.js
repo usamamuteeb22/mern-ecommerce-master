@@ -8,10 +8,10 @@ export const useCartStore = create((set, get) => ({
 	total: 0,
 	subtotal: 0,
 	isCouponApplied: false,
-
+    clearCart: () => set({ cart: [] }),
 	getMyCoupon: async () => {
 		try {
-			const response = await axios.get("/coupons");
+			const response = await axios.get("http://localhost:8000/api/coupons");
 			set({ coupon: response.data });
 		} catch (error) {
 			console.error("Error fetching coupon:", error);
@@ -19,7 +19,7 @@ export const useCartStore = create((set, get) => ({
 	},
 	applyCoupon: async (code) => {
 		try {
-			const response = await axios.post("/coupons/validate", { code });
+			const response = await axios.post("http://localhost:8000/api/coupons/validate", { code });
 			set({ coupon: response.data, isCouponApplied: true });
 			get().calculateTotals();
 			toast.success("Coupon applied successfully");
@@ -35,7 +35,7 @@ export const useCartStore = create((set, get) => ({
 
 	getCartItems: async () => {
 		try {
-			const res = await axios.get("/cart");
+			const res = await axios.get("http://localhost:8000/api/cart");
 			set({ cart: res.data });
 			get().calculateTotals();
 		} catch (error) {
@@ -48,7 +48,7 @@ export const useCartStore = create((set, get) => ({
 	},
 	addToCart: async (product) => {
 		try {
-			await axios.post("/cart", { productId: product._id });
+			await axios.post("http://localhost:8000/api/cart", { productId: product._id });
 			toast.success("Product added to cart");
 
 			set((prevState) => {
@@ -66,7 +66,7 @@ export const useCartStore = create((set, get) => ({
 		}
 	},
 	removeFromCart: async (productId) => {
-		await axios.delete(`/cart`, { data: { productId } });
+		await axios.delete(`http://localhost:8000/api/cart`, { data: { productId } });
 		set((prevState) => ({ cart: prevState.cart.filter((item) => item._id !== productId) }));
 		get().calculateTotals();
 	},
@@ -76,7 +76,7 @@ export const useCartStore = create((set, get) => ({
 			return;
 		}
 
-		await axios.put(`/cart/${productId}`, { quantity });
+		await axios.put(`http://localhost:8000/api/cart/${productId}`, { quantity });
 		set((prevState) => ({
 			cart: prevState.cart.map((item) => (item._id === productId ? { ...item, quantity } : item)),
 		}));

@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import axios from "../lib/axios";
 import { toast } from "react-hot-toast";
+import axios from "axios";
 
 export const useUserStore = create((set, get) => ({
 	user: null,
@@ -16,19 +16,21 @@ export const useUserStore = create((set, get) => ({
 		}
 
 		try {
-			const res = await axios.post("/auth/signup", { name, email, password });
+			const res = await axios.post("http://localhost:8000/api/auth/signup", { name, email, password }, { withCredentials: true });
 			set({ user: res.data, loading: false });
 		} catch (error) {
 			set({ loading: false });
 			toast.error(error.response.data.message || "An error occurred");
 		}
 	},  
+
 	login: async (email, password) => {
 		set({ loading: true });
-
 		try {
-			const res = await axios.post("/auth/login", { email, password });
-
+			const res = await axios.post("http://localhost:8000/api/auth/login", 
+				{ email, password }, 
+				{ withCredentials: true }  // Ensure cookies are sent with the request
+			);
 			set({ user: res.data, loading: false });
 		} catch (error) {
 			set({ loading: false });
@@ -38,7 +40,7 @@ export const useUserStore = create((set, get) => ({
 
 	logout: async () => {
 		try {
-			await axios.post("/auth/logout");
+			await axios.post("http://localhost:8000/api/auth/logout", {}, { withCredentials: true });  // Include withCredentials here if necessary
 			set({ user: null });
 		} catch (error) {
 			toast.error(error.response?.data?.message || "An error occurred during logout");
@@ -48,7 +50,7 @@ export const useUserStore = create((set, get) => ({
 	checkAuth: async () => {
 		set({ checkingAuth: true });
 		try {
-			const response = await axios.get("/auth/profile");
+			const response = await axios.get("http://localhost:8000/api/auth/profile", { withCredentials: true });  // Include withCredentials here
 			set({ user: response.data, checkingAuth: false });
 		} catch (error) {
 			console.log(error.message);
@@ -57,12 +59,11 @@ export const useUserStore = create((set, get) => ({
 	},
 
 	refreshToken: async () => {  
-		// Prevent multiple simultaneous refresh attempts
 		if (get().checkingAuth) return;
 
 		set({ checkingAuth: true });
 		try {
-			const response = await axios.post("/auth/refresh-token");
+			const response = await axios.post("http://localhost:8000/api/auth/refresh-token", {}, { withCredentials: true });  // Include withCredentials here
 			set({ checkingAuth: false });
 			return response.data;
 		} catch (error) {
@@ -71,8 +72,6 @@ export const useUserStore = create((set, get) => ({
 		}
 	},
 }));
-
-// TODO: Implement the axios interceptors for refreshing access token
 
 // Axios interceptor for token refresh
 let refreshPromise = null;
@@ -85,20 +84,17 @@ axios.interceptors.response.use(
 			originalRequest._retry = true;
 
 			try {
-				// If a refresh is already in progress, wait for it to complete
 				if (refreshPromise) {
 					await refreshPromise;
 					return axios(originalRequest);
 				}
 
-				// Start a new refresh process
 				refreshPromise = useUserStore.getState().refreshToken();
 				await refreshPromise;
 				refreshPromise = null;
 
 				return axios(originalRequest);
 			} catch (refreshError) {
-				// If refresh fails, redirect to login or handle as needed
 				useUserStore.getState().logout();
 				return Promise.reject(refreshError);
 			}
